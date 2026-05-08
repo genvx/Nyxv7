@@ -9319,11 +9319,9 @@ run(function()
         return ''
     end
 
-    -- Helper to get the proper display name for boss entities
     local function getBossDisplayName(ent)
         if not ent.NPC or not ent.Character then return nil end
         local char = ent.Character
-        -- Detect Bhaa boss via attributes, name, or unique part
         if char:GetAttribute("BossType") == "Bhaa" then
             return "Bhaa"
         end
@@ -9333,7 +9331,6 @@ run(function()
         if char:FindFirstChild("BhaaModel") or char:FindFirstChild("BhaaHead") then
             return "Bhaa"
         end
-        -- If name is Titan and none of the above, assume it's Titan
         if char.Name == "Titan" then
             return "Titan"
         end
@@ -12879,7 +12876,9 @@ end)
 run(function()
 	local AutoReset
 	local OwlCheckReset
+	local PearlCheckReset
 	local cachedLowestPointReset
+	local pearlLastInHandTick = 0  
 
 	AutoReset = vape.Categories.Utility:CreateModule({
 		Name = 'AutoReset',
@@ -12902,10 +12901,24 @@ run(function()
 				repeat
 					if entitylib.isAlive then
 						local root = entitylib.character.RootPart
-						if root.Position.Y < cachedLowestPointReset and (lplr.Character:GetAttribute('InflatedBalloons') or 0) <= 0 and not getItem('balloon') then
-							if not OwlCheckReset.Enabled or not root:FindFirstChild('OwlLiftForce') then
-								local hum = lplr.Character and lplr.Character:FindFirstChildOfClass('Humanoid')
-								if hum then hum.Health = -1 end
+						if not root then task.wait(0.1) continue end
+
+						local handItem = store.inventory and store.inventory.inventory and store.inventory.inventory.hand
+						if handItem and handItem.itemType == 'telepearl' then
+							pearlLastInHandTick = tick()
+						end
+
+						if root.Position.Y < cachedLowestPointReset 
+							and (lplr.Character:GetAttribute('InflatedBalloons') or 0) <= 0 
+							and not getItem('balloon') then
+
+							local owlBlock = OwlCheckReset.Enabled and root:FindFirstChild('OwlLiftForce')
+							if not owlBlock then
+								local pearlBlock = PearlCheckReset.Enabled and (tick() - pearlLastInHandTick) < 4
+								if not pearlBlock then
+									local hum = lplr.Character and lplr.Character:FindFirstChildOfClass('Humanoid')
+									if hum then hum.Health = -1 end
+								end
 							end
 						end
 					end
@@ -12919,7 +12932,13 @@ run(function()
 	OwlCheckReset = AutoReset:CreateToggle({
 		Name = 'Owl check',
 		Default = true,
-		Tooltip = 'does not reset if being picked up by an owl'
+		Tooltip = 'Does not reset if being picked up by an owl'
+	})
+
+	PearlCheckReset = AutoReset:CreateToggle({
+		Name = 'Pearl check',
+		Default = false,
+		Tooltip = 'Does not reset if holding a pearl or recently threw one (4 sec cooldown)'
 	})
 end)
 
