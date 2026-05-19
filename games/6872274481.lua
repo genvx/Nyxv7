@@ -2747,246 +2747,233 @@ end)
 
 run(function()
     local KitRender
-    local Players = playersService
-    local player = Players.LocalPlayer
-    local PlayerGui = player:WaitForChild("PlayerGui")
 
-    local activeLoops = {}
-    local updateDebounce = {}
-    local retryThread = nil
-
-    local function createkitrender(plr)
-        local icon = Instance.new("ImageLabel")
-        icon.Name = "AeroV4KitRender" 
-        icon.AnchorPoint = Vector2.new(1, 0.5)
-        icon.BackgroundTransparency = 1
-        icon.Position = UDim2.new(1.05, 0, 0.5, 0)
-        icon.Size = UDim2.new(1.5, 0, 1.5, 0)
-        icon.SizeConstraint = Enum.SizeConstraint.RelativeYY
-        icon.ImageTransparency = 0.4
-        icon.ScaleType = Enum.ScaleType.Crop
-        local uar = Instance.new("UIAspectRatioConstraint")
-        uar.AspectRatio = 1
-        uar.AspectType = Enum.AspectType.FitWithinMaxSize
-        uar.DominantAxis = Enum.DominantAxis.Width
-        uar.Parent = icon
-		local kit = plr:GetAttribute("PlayingAsKits")
-		local meta = bedwars.BedwarsKitMeta and (bedwars.BedwarsKitMeta[kit] or bedwars.BedwarsKitMeta.none)
-        local newImage = (meta and meta.renderImage) or kitImageIds[kit] or kitImageIds["none"]
-		icon.Image = newImage
-        return icon
+    local function getKitMeta(player)
+        local kit = player:GetAttribute('PlayingAsKits') or player:GetAttribute('PlayingAsKit') or 'none'
+        return bedwars.BedwarsKitMeta[kit] or bedwars.BedwarsKitMeta.none
     end
 
-    local function removeallkitrenders()
-        for key, _ in pairs(activeLoops) do
-            activeLoops[key] = nil
-        end
-        table.clear(updateDebounce)
-        
-        if retryThread then
-            task.cancel(retryThread)
-            retryThread = nil
-        end
-        
-        for _, v in ipairs(PlayerGui:GetDescendants()) do
-            if v:IsA("ImageLabel") and v.Name == "AeroV4KitRender" then  
-                v:Destroy()
+    local function getPlayerFromDraft(render, name)
+        local id = render and render:match('id=(%d+)')
+        if id then
+            local player = playersService:GetPlayerByUserId(tonumber(id))
+            if player then
+                return player
             end
         end
-    end
 
-    local function refreshicon(icon, plr)
-        if not icon or not icon.Parent then return end
-        local kit = plr:GetAttribute("PlayingAsKits")
-        local meta = bedwars.BedwarsKitMeta and (bedwars.BedwarsKitMeta[kit] or bedwars.BedwarsKitMeta.none)
-        local newImage = (meta and meta.renderImage) or kitImageIds[kit] or kitImageIds["none"]
-        if icon.Image ~= newImage then
-            icon.Image = newImage
-        end
-    end
+        for _, v in playersService:GetPlayers() do
+            if render and render:find('id='..v.UserId, 1, true) then
+                return v
+            end
 
-    local function findPlayer(label, container)
-        local render = container:FindFirstChild("PlayerRender", true)
-        if render and render:IsA("ImageLabel") and render.Image then
-            local userId = string.match(render.Image, "id=(%d+)")
-            if userId then
-                local plr = Players:GetPlayerByUserId(tonumber(userId))
-                if plr then return plr end
+            if name and (v.Name == name or v.DisplayName == name or v:GetAttribute('DisguiseDisplayName') == name) then
+                return v
             end
-        end
-        local text = label.Text
-        for _, plr in ipairs(Players:GetPlayers()) do
-            if plr.Name == text or plr.DisplayName == text or plr:GetAttribute("DisguiseDisplayName") == text then
-                return plr
-            end
-            local smName = nil
+
+            local displayName
             pcall(function()
-                smName = bedwars.KnitClient.Controllers.StreamerModeController:getDisplayName(plr)
+                displayName = bedwars.StreamerModeController:getDisplayName(v)
             end)
-            if smName and smName == text then
-                return plr
+            if name and displayName == name then
+                return v
             end
+        end
+		return nil
+    end
+
+    local waitForChild = function(start, ...)
+        local parent = start
+        for _, v in ({...}) do
+            parent = parent and parent:WaitForChild(v, 5)
+            if not parent then
+                break
+            end
+        end
+        return parent
+    end
+
+    local function getPlayerName(card)
+        local textbar = card and card:FindFirstChild('TextBackgroundBar')
+        local label = textbar and textbar:FindFirstChild('PlayerName') or card and card:FindFirstChild('PlayerName', true)
+        return label and label.Text or ''
+    end
+
+    local function getDraftCard(container)
+        if not container then return end
+        return container.Name == 'MatchDraftPlayerCard' and container or container:FindFirstChild('MatchDraftPlayerCard', true)
+    end
+
+    local function callback5v5(v, plr)
+        if not v then return end
+        local render = v:FindFirstChild('PlayerRender', true)
+        local player = plr or getPlayerFromDraft(render and render.Image or '', getPlayerName(v))
+
+        if player then
+            local kitImage = getKitMeta(player)
+            local roact = v:FindFirstChild('KitDraft')
+
+            if not roact then
+                roact = Instance.new('ImageLabel', v)
+                roact.BackgroundTransparency = 1
+                roact.AnchorPoint = Vector2.new(1, 0.5)
+                roact.Position = UDim2.fromScale(1.05, 0.5)
+                roact.Name = 'KitDraft'
+                roact.Size = UDim2.fromScale(1.5, 1.5)
+                roact.ZIndex = 1
+                roact.ImageTransparency = 0.4
+                roact.SliceCenter = Rect.new(0, 0, 0, 0)
+                roact.SliceScale = 1
+                roact.ScaleType = Enum.ScaleType.Crop
+                KitRender:Clean(roact)
+                local ratio = Instance.new('UIAspectRatioConstraint', roact)
+                ratio.Name = '1'
+                ratio.AspectRatio = 1
+                ratio.AspectType = Enum.AspectType.FitWithinMaxSize
+                ratio.DominantAxis = Enum.DominantAxis.Width
+            end
+
+            roact.Image = kitImage.renderImage
+            roact.Position = UDim2.fromScale(1.05, 0)
+            tweenService:Create(roact, TweenInfo.new(0.2, Enum.EasingStyle.Cubic, Enum.EasingDirection.Out), {
+                Position = UDim2.fromScale(1.05, 0.4)
+            }):Play()
+
+            local function update()
+                kitImage = getKitMeta(player)
+                roact.Image = kitImage.renderImage
+            end
+
+            KitRender:Clean(player:GetAttributeChangedSignal('PlayingAsKits'):Connect(update))
+            KitRender:Clean(player:GetAttributeChangedSignal('PlayingAsKit'):Connect(update))
         end
     end
 
-    local function handleLabel(label)
-        if not (label:IsA("TextLabel") and label.Name == "PlayerName") then return end
-        task.spawn(function()
-            local container = label.Parent
-            for _ = 1, 3 do
-                if container and container.Parent then
-                    container = container.Parent
+    local function callbacksquad(v)
+        if not v then return end
+        local render = v:FindFirstChild('PlayerRender', true)
+        local player = render and getPlayerFromDraft(render.Image, '') or nil
+
+        if player then 
+            local kitImage = getKitMeta(player)
+            local Roact = v:FindFirstChild('KitDraft')
+
+            if not Roact then
+                local base = v:FindFirstChild('3') or v:WaitForChild('3', 5)
+                if not base then return end
+                Roact = base:Clone()
+                Roact.Parent = v
+                Roact.Name = 'KitDraft'
+                KitRender:Clean(Roact)
+            end
+
+            Roact.Image = kitImage.renderImage
+
+            KitRender:Clean(render:GetPropertyChangedSignal('Image'):Connect(function()
+                local newplayer = getPlayerFromDraft(render.Image, '')
+                if newplayer then
+                    player = newplayer
+                    kitImage = getKitMeta(player)
+                    Roact.Image = kitImage.renderImage
+                end
+            end))
+
+            local function update()
+                kitImage = getKitMeta(player)
+                Roact.Image = kitImage.renderImage
+            end
+
+            KitRender:Clean(player:GetAttributeChangedSignal('PlayingAsKits'):Connect(update))
+            KitRender:Clean(player:GetAttributeChangedSignal('PlayingAsKit'):Connect(update))
+        end
+    end
+
+    local function setup5v5(DraftApp)
+        local Background = DraftApp:FindFirstChild('DraftAppBackground')
+        local BodyContainer = Background and Background:FindFirstChild('1') and Background['1']:FindFirstChild('BodyContainer')
+        local hooked = false
+
+        for i = 1, 2 do
+            local dtc = BodyContainer and BodyContainer:FindFirstChild('Team'..i..'Column')
+            if dtc then
+                hooked = true
+                KitRender:Clean(dtc.ChildAdded:Connect(function(child)
+                    task.delay(0.2, function()
+                        if KitRender.Enabled then
+                            callback5v5(getDraftCard(child))
+                        end
+                    end)
+                end))
+
+                for _, v in dtc:GetChildren() do
+                    if v:IsA('Frame') then
+                        callback5v5(getDraftCard(v))
+                    end
                 end
             end
-            if not container or not container:IsA("Frame") then return end
-            
-            local playerFound = findPlayer(label, container)
-            if not playerFound then
-                task.wait(0.5)
-                playerFound = findPlayer(label, container)
-            end
-            if not playerFound then return end
-            if getAccountTier(playerFound) >= 4 and getAccountTier(lplr) == 0 then return end
-            
-            container.Name = playerFound.Name
-            local card = container:FindFirstChild("1") and container["1"]:FindFirstChild("MatchDraftPlayerCard")
-            if not card then return end
-            
-            local icon = card:FindFirstChild("AeroV4KitRender")  
-            if not icon then
-                icon = createkitrender(playerFound)
-                icon.Parent = card
-            end
-            
-            local loopKey = playerFound.UserId
-            if activeLoops[loopKey] then
-                activeLoops[loopKey] = nil
-            end
-            activeLoops[loopKey] = true
-			task.spawn(function()
-				while activeLoops[loopKey] and KitRender.Enabled do
-					if not container or not container.Parent then
-						break
-					end
-					if playerFound and icon and icon.Parent then
-						refreshicon(icon, playerFound)
-					end
-					task.wait(0.3)
-				end
-				activeLoops[loopKey] = nil
-				updateDebounce[loopKey] = nil
-			end)
-        end)
-    end
+        end
 
-    local activeConnections = {}
-    local kitLabels = {}
-    local squadUpdateDebounce = {}
-    local processedPlayers = {}
-
-    local function createKitLabel(parent, kitImage)
-        if kitLabels[parent] then kitLabels[parent]:Destroy() end
-        local kitLabel = Instance.new("ImageLabel")
-        kitLabel.Name = "AeroV4KitIcon"
-        kitLabel.Size = UDim2.new(1, 0, 1, 0)
-        kitLabel.Position = UDim2.new(1.1, 0, 0, 0)
-        kitLabel.BackgroundTransparency = 1
-        kitLabel.Image = kitImage
-        kitLabel.Parent = parent
-        kitLabels[parent] = kitLabel
-        return kitLabel
-    end
-
-    local function setupSquadsKitRender(obj)
-        if obj.Name == "PlayerRender" and obj.Parent and obj.Parent.Parent and obj.Parent.Parent.Parent and obj.Parent.Parent.Parent.Parent and obj.Parent.Parent.Parent.Parent.Parent and obj.Parent.Parent.Parent.Parent.Parent.Name == "MatchDraftTeamCardRow" then
-            local Rank = obj.Parent:FindFirstChild('3')
-            if not Rank then return end
-            local userId = string.match(obj.Image, "id=(%d+)")
-            if not userId then return end
-            local plr = playersService:GetPlayerByUserId(tonumber(userId))
-            if not plr then return end
-            if getAccountTier(plr) >= 4 and getAccountTier(lplr) == 0 then return end
-            local loopKey = plr.UserId
-            processedPlayers[loopKey] = true
-            if activeConnections[loopKey] then activeConnections[loopKey]:Disconnect() activeConnections[loopKey] = nil end
-            local function updateKit()
-                if not KitRender.Enabled then return end
-                if not Rank or not Rank.Parent then
-                    if activeConnections[loopKey] then activeConnections[loopKey]:Disconnect() activeConnections[loopKey] = nil end
-                    if kitLabels[Rank] then kitLabels[Rank]:Destroy() kitLabels[Rank] = nil end
-                    return
+        if not hooked then
+            for _, label in DraftApp:GetDescendants() do
+                if label:IsA('TextLabel') and label.Name == 'PlayerName' then
+                    local container = label.Parent
+                    for _ = 1, 3 do
+                        container = container and container.Parent
+                    end
+                    if container then
+                        callback5v5(getDraftCard(container))
+                    end
                 end
-                local kitName = plr:GetAttribute("PlayingAsKits") or "none"
-                local render = bedwars.BedwarsKitMeta[kitName] or bedwars.BedwarsKitMeta.none
-                if kitLabels[Rank] then kitLabels[Rank].Image = render.renderImage
-                else createKitLabel(Rank, render.renderImage) end
             end
-            updateKit()
-            local connection = plr:GetAttributeChangedSignal("PlayingAsKits"):Connect(function()
-                local t = tick()
-                if not squadUpdateDebounce[loopKey] or (t - squadUpdateDebounce[loopKey]) >= 0.1 then
-                    squadUpdateDebounce[loopKey] = t
-                    updateKit()
+
+            KitRender:Clean(DraftApp.DescendantAdded:Connect(function(child)
+                if child:IsA('TextLabel') and child.Name == 'PlayerName' then
+                    task.delay(0.2, function()
+                        local container = child.Parent
+                        for _ = 1, 3 do
+                            container = container and container.Parent
+                        end
+                        if KitRender.Enabled and container then
+                            callback5v5(getDraftCard(container))
+                        end
+                    end)
                 end
-            end)
-            activeConnections[loopKey] = connection
-            KitRender:Clean(connection)
+            end))
+        end
+
+        return hooked
+    end
+
+    local function setupSquad(DraftApp)
+        local Background = DraftApp:FindFirstChild('DraftAppBackground')
+        local BodyContainer = Background and Background:FindFirstChild('1') and Background['1']:FindFirstChild('BodyContainer')
+        local TeamsColumn = BodyContainer and BodyContainer:FindFirstChild('TeamsColumn')
+        if not TeamsColumn then return end
+
+        for _, v in TeamsColumn:GetChildren() do
+            if v:IsA('Frame') then
+                local plrframe = waitForChild(v, '1', '2', '4')
+                if plrframe then
+                    for _, plr in plrframe:GetChildren() do
+                        callbacksquad(plr)
+                    end
+
+                    KitRender:Clean(plrframe.ChildAdded:Connect(function(plr)
+                        task.delay(1, callbacksquad, plr)
+                    end))
+                end
+            end
         end
     end
 
-    local function setupSquadsRender()
-        local teams = lplr.PlayerGui:FindFirstChild("MatchDraftApp")
-        if not teams then return false end
-        task.wait(0.5)
-        for _, obj in teams:GetDescendants() do
-            if KitRender.Enabled then task.spawn(function() setupSquadsKitRender(obj) end) end
-        end
-        KitRender:Clean(teams.DescendantAdded:Connect(function(obj)
-            if KitRender.Enabled then task.wait(0.1) setupSquadsKitRender(obj) end
-        end))
-        return true
-    end
-
-    local function removeSquadsRender()
-        for key, connection in pairs(activeConnections) do
-            if connection then connection:Disconnect() end
-            activeConnections[key] = nil
-        end
-        for parent, label in pairs(kitLabels) do
-            if label then label:Destroy() end
-            kitLabels[parent] = nil
-        end
-        table.clear(squadUpdateDebounce)
-        table.clear(processedPlayers)
-    end
-
-    local function setupKitRender()
-        local draftApp = PlayerGui:FindFirstChild("MatchDraftApp")
-        if not draftApp then return false end
-
-        for _, child in ipairs(draftApp:GetDescendants()) do
-            if KitRender.Enabled then handleLabel(child) end
-        end
-
-        KitRender:Clean(draftApp.DescendantAdded:Connect(function(child)
-            if KitRender.Enabled then handleLabel(child) end
-        end))
-
-        return true
-    end
-
-    KitRender = vape.Categories.Utility:CreateModule({
-        Name = "KitRender",
-        Tooltip = "Shows everyone's kit during kit phase (for 5v5 or Squads)",
-        Function = function(callback)
-            if callback then
-                local draftApp = lplr.PlayerGui:FindFirstChild("MatchDraftApp")
-                local isSquads = draftApp and draftApp:FindFirstChild("MatchDraftTeamCardRow", true) ~= nil
-                local setupFn = isSquads and setupSquadsRender or setupKitRender
-				setupFn()
-            else
-                removeallkitrenders()
-                removeSquadsRender()
+    KitRender = vape.Categories.Render:CreateModule({
+        Name = 'KitRender',
+        Tooltip = 'Allows you to see the other opponent team\'s kits',
+        Function = function(call)
+            if call then
+                local DraftApp = lplr.PlayerGui:WaitForChild('MatchDraftApp', 9e9)
+                setup5v5(DraftApp)
+                setupSquad(DraftApp)
             end
         end
     })
