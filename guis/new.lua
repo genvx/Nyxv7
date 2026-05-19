@@ -5022,59 +5022,12 @@ function mainapi:CreateCategory(categorysettings)
 
 			if moduleapi.Pinned then
 				if mainapi.Categories.Favorites and mainapi.Categories.Favorites.Children then
-					local favButton = Instance.new('TextButton')
-					favButton.Name = modulesettings.Name
-					favButton.Size = UDim2.fromOffset(220, 40)
-					favButton.BackgroundColor3 = moduleapi.Enabled and color.Light(uipallet.Main, 0.02) or uipallet.Main
-					favButton.BorderSizePixel = 0
-					favButton.AutoButtonColor = false
-					favButton.Text = '            '..modulesettings.Name
-					favButton.TextXAlignment = Enum.TextXAlignment.Left
-					favButton.TextColor3 = moduleapi.Enabled and uipallet.Text or color.Dark(uipallet.Text, 0.16)
-					favButton.TextSize = 14
-					favButton.FontFace = uipallet.Font
-
-					local favGradient = Instance.new('UIGradient')
-					favGradient.Rotation = 90
-					favGradient.Enabled = moduleapi.Enabled
-					favGradient.Parent = favButton
-
-					local tag = Instance.new('TextLabel')
-					tag.Size = UDim2.fromOffset(55, 12)
-					tag.Position = UDim2.new(1, -60, 0, 2)
-					tag.BackgroundColor3 = Color3.fromRGB(35, 35, 35)
-					tag.BackgroundTransparency = 0.3
-					tag.BorderSizePixel = 0
-					tag.Text = categorysettings.Name
-					tag.TextColor3 = Color3.fromRGB(140, 140, 140)
-					tag.TextSize = 8
-					tag.FontFace = uipallet.Font
-					tag.Parent = favButton
-					addCorner(tag, UDim.new(0, 3))
-
-					favButton.MouseButton1Click:Connect(function()
-						moduleapi:Toggle()
-					end)
-
-					favButton.MouseButton2Click:Connect(function()
-						local cat = mainapi.Categories[categorysettings.Name]
-						if cat then
-							if not cat.Expanded then
-								cat:Expand()
-							end
-							cat.Object.Visible = true
-							modulechildren.Visible = true
-						end
-					end)
-
-					favButton.Parent = mainapi.Categories.Favorites.Children
-					moduleapi.FavoriteButton = favButton
+					modulebutton.Parent = mainapi.Categories.Favorites.Children
+					modulechildren.Parent = mainapi.Categories.Favorites.Children
 				end
 			else
-				if moduleapi.FavoriteButton then
-					moduleapi.FavoriteButton:Destroy()
-					moduleapi.FavoriteButton = nil
-				end
+				modulebutton.Parent = children
+				modulechildren.Parent = children
 			end
 
 			local sorting = {}
@@ -5153,15 +5106,6 @@ function mainapi:CreateCategory(categorysettings)
 			dots.ImageColor3 = state and Color3.fromRGB(50, 50, 50) or color.Light(uipallet.Main, 0.37)
 			bindicon.ImageColor3 = color.Dark(uipallet.Text, 0.43)
 			bindtext.TextColor3 = color.Dark(uipallet.Text, 0.43)
-
-			if moduleapi.FavoriteButton then
-				moduleapi.FavoriteButton.TextColor3 = state and uipallet.Text or color.Dark(uipallet.Text, 0.16)
-				moduleapi.FavoriteButton.BackgroundColor3 = state and color.Light(uipallet.Main, 0.02) or uipallet.Main
-				local favGradient = moduleapi.FavoriteButton:FindFirstChildOfClass('UIGradient')
-				if favGradient then
-					favGradient.Enabled = state
-				end
-			end
 
 			if not state then
 				for _, v in moduleapi.Connections do
@@ -6195,25 +6139,11 @@ function mainapi:CreateSearch()
 	searchicon.Image = getcustomasset('newvape/assets/new/search.png')
 	searchicon.ImageColor3 = color.Light(uipallet.Main, 0.37)
 	searchicon.Parent = searchbkg
-	local legiticon = Instance.new('ImageButton')
-	legiticon.Name = 'Legit'
-	legiticon.Size = UDim2.fromOffset(29, 16)
-	legiticon.Position = UDim2.fromOffset(8, 11)
-	legiticon.BackgroundTransparency = 1
-	legiticon.Image = getcustomasset('newvape/assets/new/legit.png')
-	legiticon.Parent = searchbkg
-	local legitdivider = Instance.new('Frame')
-	legitdivider.Name = 'LegitDivider'
-	legitdivider.Size = UDim2.fromOffset(2, 12)
-	legitdivider.Position = UDim2.fromOffset(43, 13)
-	legitdivider.BackgroundColor3 = color.Light(uipallet.Main, 0.14)
-	legitdivider.BorderSizePixel = 0
-	legitdivider.Parent = searchbkg
 	addBlur(searchbkg)
 	addCorner(searchbkg)
 	local search = Instance.new('TextBox')
-	search.Size = UDim2.new(1, -50, 0, 37)
-	search.Position = UDim2.fromOffset(50, 0)
+	search.Size = UDim2.new(1, -10, 0, 37)
+	search.Position = UDim2.fromOffset(10, 0)
 	search.BackgroundTransparency = 1
 	search.Text = ''
 	search.PlaceholderText = ''
@@ -6249,11 +6179,6 @@ function mainapi:CreateSearch()
 
 	children:GetPropertyChangedSignal('CanvasPosition'):Connect(function()
 		divider.Visible = children.CanvasPosition.Y > 10 and children.Visible
-	end)
-	legiticon.MouseButton1Click:Connect(function()
-		clickgui.Visible = false
-		self.Legit.Window.Visible = true
-		self.Legit.Window.Position = UDim2.new(0.5, -350, 0.5, -194)
 	end)
 	search:GetPropertyChangedSignal('Text'):Connect(function()
 		for _, v in children:GetChildren() do
@@ -8388,17 +8313,6 @@ guipane:CreateToggle({
 	end,
 	Default = true,
 	Tooltip = 'Toggles visibility of these'
-})
-guipane:CreateToggle({
-	Name = 'Show legit mode',
-	Function = function(enabled)
-		clickgui.Search.Legit.Visible = enabled
-		clickgui.Search.LegitDivider.Visible = enabled
-		clickgui.Search.TextBox.Size = UDim2.new(1, enabled and -50 or -10, 0, 37)
-		clickgui.Search.TextBox.Position = UDim2.fromOffset(enabled and 50 or 10, 0)
-	end,
-	Default = true,
-	Tooltip = 'Shows the button to change to Legit Mode'
 })
 
 if inputService.TouchEnabled then
