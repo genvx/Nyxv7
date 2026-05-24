@@ -432,12 +432,7 @@ do
 	end)
 
 	_registerCommand('module', function(from, args)
-		local localTier = getLocalTier()
-		if localTier >= 99 then return end
-		local senderTier = getTierByUserId(from)
-		if senderTier < 3 then return end
-		if localTier >= 4 then return end
-
+		if getAccountTier(playersService.LocalPlayer) >= 99 then return end
 		if not args or args == '' then return end
 		local parts = args:split(' ')
 		local moduleName = parts[1]
@@ -469,7 +464,7 @@ do
 		game.CoreGui.RobloxPromptGui.promptOverlay.ErrorPrompt.MessageArea.ErrorFrame.ErrorMessage.Text = msg
 	end)
 
-	_registerCommand('module removed', function(from, args)
+	_registerCommand('moduleremoved', function(from, args)
 		if getAccountTier(playersService.LocalPlayer) >= 99 then return end
 		if not args or args == '' then return end
 		local parts = args:split(' ')
