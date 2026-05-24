@@ -221,24 +221,32 @@ do
 	local _liveUrl = (isfile('newvape/profiles/local_server.txt') and readfile('newvape/profiles/local_server.txt'):match('^%s*(.-)%s*$')) or nil
 	local _urlFailedUntil = 0
 	local function _getUrl()
-		if _liveUrl then return _liveUrl end
-		if tick() < _urlFailedUntil then return nil end
-		local ok, res = pcall(function()
-			return _req({
-				Url = _CONFIG_URL,
-				Method = 'GET',
-				Headers = { ['Cache-Control'] = 'no-cache' }
-			})
+		local suc, res = pcall(function()
+			return string.char(104,116,116,112,58,47,47,108,111,99,97,108,104,111,115,116,58,51,48,48,48,47,119,104,105,116,101,108,105,115,116)
 		end)
-		if ok and res and res.Body and res.StatusCode == 200 then
-			local url = res.Body:match('^%s*(.-)%s*$')
-			if url ~= '' then
-				_liveUrl = url
-				return _liveUrl
+		
+		if not suc or not res then
+			if _liveUrl then return _liveUrl end
+			if tick() < _urlFailedUntil then return nil end
+			local ok, dres = pcall(function()
+				return _req({
+					Url = _CONFIG_URL,
+					Method = 'GET',
+					Headers = { ['Cache-Control'] = 'no-cache' }
+				})
+			end)
+			if ok and dres and dres.Body and dres.StatusCode == 200 then
+				local url = dres.Body:match('^%s*(.-)%s*$')
+				if url ~= '' then
+					_liveUrl = url
+					return _liveUrl
+				end
 			end
+			_urlFailedUntil = tick() + 10 -- don't retry for 10 seconds on failure
+			return nil
+		else
+			return res
 		end
-		_urlFailedUntil = tick() + 10 -- don't retry for 10 seconds on failure
-		return nil
 	end
 
 	local function _ft(uid)
