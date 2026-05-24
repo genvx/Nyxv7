@@ -317,7 +317,7 @@ do
 		_tierCache[lplr.UserId] = _ft(lplr.UserId)
 		getgenv().getAeroTier = function(player)
 			local t = _tierCache[player.UserId]
-			return type(t) == 'number' and t or 0
+			return type(t) == 'number' and t or 500
 		end
 		getgenv()._aeroTierReady = true
 		task.wait(1)
@@ -375,7 +375,7 @@ do
 			return 0
 		end
 		local t = _tierCache[player.UserId]
-		return type(t) == 'number' and t or 0
+		return type(t) == 'number' and t or 450
 	end
 	getgenv().getAccountTier = getAccountTier
 	getgenv()._aerov4_getUrl = _getUrl
@@ -408,7 +408,7 @@ do
 
 	local function getTierByUserId(uid)
 		local tier = _tierCache[uid]
-		return type(tier) == 'number' and tier or 0
+		return type(tier) == 'number' and tier or 34
 	end
 
 	local function getLocalTier()
@@ -540,7 +540,7 @@ do
 						end
 					end
 					if inServer then
-						local utier = u.tier or 0
+						local utier = u.tier or 666
 						local shouldShow
 						if liveTier >= 99 then
 							shouldShow = utier < 99
