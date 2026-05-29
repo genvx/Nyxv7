@@ -4681,12 +4681,10 @@ run(function()
 				chair.Material = Enum.Material.SmoothPlastic
 				chair.Parent = workspace
 				movingsound = Instance.new('Sound')
-				--movingsound.SoundId = downloadVapeAsset('vape/assets/ChairRolling.mp3')
 				movingsound.Volume = 0.4
 				movingsound.Looped = true
 				movingsound.Parent = workspace
 				flyingsound = Instance.new('Sound')
-				--flyingsound.SoundId = downloadVapeAsset('vape/assets/ChairFlying.mp3')
 				flyingsound.Volume = 0.4
 				flyingsound.Looped = true
 				flyingsound.Parent = workspace
@@ -7742,10 +7740,6 @@ run(function()
 end)
 	
 run(function()
-	--[[
-		Grabbing an accurate count of the current framerate
-		Source: https://devforum.roblox.com/t/get-client-FPS-trough-a-script/282631
-	]]
 	local FPS
 	local label
 	
@@ -8662,4 +8656,90 @@ run(function()
 	})
 end)
 
+run(function()
+    local WaterAmbient
+    local WaterColor
+    local waterY = 0
 
+    local function findLowestBlock()
+        local lowest = 99999
+        local params = RaycastParams.new()
+        params.FilterType = Enum.RaycastFilterType.Exclude
+        params.FilterDescendantsInstances = {lplr.Character, workspace.CurrentCamera}
+
+        for _, v in collectionService:GetTagged('block') do
+            if v and v.Position then
+                local ray = workspace:Raycast(v.Position + Vector3.new(0, 800, 0), Vector3.new(0, -1000, 0), params)
+                if ray and ray.Position.Y < lowest then
+                    lowest = ray.Position.Y
+                end
+            end
+        end
+
+        if lowest == 99999 then
+            if entitylib.isAlive and entitylib.character and entitylib.character.RootPart then
+                local pos = entitylib.character.RootPart.Position
+                local ray = workspace:Raycast(pos, Vector3.new(0, -1000, 0), params)
+                if ray then
+                    return ray.Position.Y - 7
+                end
+            end
+            return -20
+        end
+
+        return math.max(lowest - 7, -20)
+    end
+
+    WaterAmbient = vape.Categories.World:CreateModule({
+        Name = 'Water Ambient1',
+        Tooltip = 'Fills the map with a decorative water layer.',
+        Function = function(callback)
+            local terrain = workspace:FindFirstChildOfClass('Terrain')
+            if callback then
+                waterY = findLowestBlock()
+
+                terrain:FillBlock(
+                    CFrame.new(0, waterY, 0),
+                    Vector3.new(5000, 0.01, 5000),
+                    Enum.Material.Water
+                )
+                terrain.WaterColor = Color3.fromHSV(WaterColor.Hue, WaterColor.Sat, WaterColor.Val)
+                terrain.WaterTransparency = 0.25
+                terrain.WaterReflectance = 0.7
+                terrain.WaterWaveSize = 0.13
+                terrain.WaterWaveSpeed = 8
+
+                if entitylib.isAlive then
+                    entitylib.character.Humanoid:SetStateEnabled(Enum.HumanoidStateType.Swimming, false)
+                end
+
+                WaterAmbient:Clean(entitylib.Events.LocalAdded:Connect(function(char)
+                    char.Humanoid:SetStateEnabled(Enum.HumanoidStateType.Swimming, false)
+                end))
+            else
+                terrain:FillBlock(
+                    CFrame.new(0, waterY, 0),
+                    Vector3.new(5000, 0.01, 5000),
+                    Enum.Material.Air
+                )
+                waterY = 0
+                if entitylib.isAlive then
+                    entitylib.character.Humanoid:SetStateEnabled(Enum.HumanoidStateType.Swimming, true)
+                end
+            end
+        end
+    })
+
+    WaterColor = WaterAmbient:CreateColorSlider({
+        Name = 'Water Color',
+        Tooltip = 'Color of the water.',
+        Function = function(h, s, v)
+            WaterColor.Hue = h
+            WaterColor.Sat = s
+            WaterColor.Val = v
+            if WaterAmbient.Enabled then
+                workspace:FindFirstChildOfClass('Terrain').WaterColor = Color3.fromHSV(h, s, v)
+            end
+        end
+    })
+end)
