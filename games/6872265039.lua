@@ -2119,7 +2119,7 @@ run(function()
 
     LARPKits = vape.Categories.Minigames:CreateModule({
         Name = "LARPKits",
-        Tooltip = "do u own it or not !!! (client-sided)",
+        Tooltip = "do u own it or not !!! (client sided pls dont be dumb)",
         Function = function(callback)
             active = callback
             if callback then
