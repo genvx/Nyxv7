@@ -1,3 +1,4 @@
+--This watermark is used to delete the file if its cached, remove it to make the file persist after vape updates.
 local run = function(func)
     local ok, err = pcall(func)
     if not ok then
@@ -122,6 +123,7 @@ local store = {
 	terraStompTime = 0,
 	terraKickTime = 0,
 }
+getgenv().store = store
 local Reach = {}
 local HitBoxes = {}
 local TrapDisabler
@@ -1025,6 +1027,8 @@ run(function()
 		end
 	})
 
+	getgenv().bedwars = bedwars
+
 	local remoteNames = {
 		AfkStatus = safeGetProto(Knit.Controllers.AfkController.KnitStart, 1),
 		AttackEntity = Knit.Controllers.SwordController.sendServerRequest,
@@ -1141,6 +1145,8 @@ run(function()
 		end
 		remotes[i] = remote
 	end
+
+	getgenv().remotes = remotes
 
 	OldBreak = bedwars.BlockController.isBlockBreakable
 
