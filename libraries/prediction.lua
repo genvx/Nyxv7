@@ -184,7 +184,8 @@ end
 
 function module.SolveTrajectory(origin, projectileSpeed, gravity, targetPos, targetVelocity, playerGravity, playerHeight, playerJump, params)
 	local disp = targetPos - origin
-	local p, q, r = targetVelocity.X, targetVelocity.Y, targetVelocity.Z
+	local effectiveVelocity = playerJump and Vector3.new(targetVelocity.X, targetVelocity.Y + playerJump, targetVelocity.Z) or targetVelocity
+	local p, q, r = effectiveVelocity.X, effectiveVelocity.Y, effectiveVelocity.Z
 	local h, j, k = disp.X, disp.Y, disp.Z
 	local l = -.5 * (gravity - (playerGravity or 0))
 
@@ -200,7 +201,7 @@ function module.SolveTrajectory(origin, projectileSpeed, gravity, targetPos, tar
 		local t = disp.Magnitude / projectileSpeed
 		if t <= 0 then return targetPos end
 		local d = (h + p*t)/t
-		local e = (j + q*t)/t
+		local e = (j + q*t)/t + 0.5 * gravity * t
 		local f = (k + r*t)/t
 		return origin + Vector3.new(d, e, f)
 	end
@@ -215,18 +216,12 @@ function module.SolveTrajectory(origin, projectileSpeed, gravity, targetPos, tar
 		table.sort(posRoots)
 
 		local bestResult = nil
-		local bestScore = math.huge
-		for _, t in ipairs(posRoots) do
+		if #posRoots > 0 then
+			local t = posRoots[1]
 			local d = (h + p*t)/t
 			local e = (j + q*t - l*t*t)/t
 			local f = (k + r*t)/t
-			local result = origin + Vector3.new(d, e, f)
-			local yDiff = math.abs(result.Y - targetPos.Y)
-			local score = t + yDiff * 0.05
-			if yDiff < 40 and score < bestScore then
-				bestScore = score
-				bestResult = result
-			end
+			bestResult = origin + Vector3.new(d, e, f)
 		end
 		if bestResult then
 			return bestResult
