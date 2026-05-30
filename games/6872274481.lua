@@ -6879,7 +6879,7 @@ run(function()
 		if not velocityHistory[id] then
 			velocityHistory[id] = rawVel
 		else
-			velocityHistory[id] = velocityHistory[id]:Lerp(rawVel, 0.65)
+			velocityHistory[id] = velocityHistory[id]:Lerp(rawVel, 0.35)
 		end
 		return velocityHistory[id]
 	end
@@ -7228,11 +7228,10 @@ run(function()
 					local targetRoot = plr.RootPart
 					if targetRoot then
 						local targetRootVel = targetRoot.AssemblyLinearVelocity or targetRoot.Velocity or Vector3.zero
+						local targetMovingUp = targetRootVel.Y > 3
 						local heightDiff = aimTarget.Y - newlook.p.Y
-						if targetRootVel.Y > 8 then
-							aimTarget = aimTarget + Vector3.new(0, math.clamp(targetRootVel.Y * 0.18, 1.5, 5.5), 0)
-						elseif targetRootVel.Y > 3 then
-							aimTarget = aimTarget + Vector3.new(0, math.clamp(targetRootVel.Y * 0.12, 0.8, 3.0), 0)
+						if targetMovingUp then
+							aimTarget = aimTarget + Vector3.new(0, math.clamp(targetRootVel.Y * 0.08, 0.5, 3.5), 0)
 						elseif heightDiff < -8 then
 							aimTarget = aimTarget + Vector3.new(0, math.clamp(math.abs(heightDiff) * 0.04, 0.3, 2.5), 0)
 						end
