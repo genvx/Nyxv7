@@ -1,4 +1,4 @@
---This watermark is used to delete the file if its cached, remove it to make the file persist after vape updates.
+local j1l1jil1i=Path2DControlPoint.new(UDim2.new(0,0,0,0))
 repeat task.wait() until game:IsLoaded()
 if shared.vape then shared.vape:Uninject() end
 
@@ -23,13 +23,35 @@ else
 	end
 end
 
+local _realLoadstring = clonefunction(loadstring)
 local vape
 local loadstring = function(...)
-	local res, err = loadstring(...)
+	local res, err = _realLoadstring(...)
 	if err and vape then
-		vape:CreateNotification('Vape', 'Failed to load : '..err, 30, 'alert')
+		vape:CreateNotification('AeroV4', 'Failed to load : '..err, 30, 'alert')
 	end
 	return res
+end
+do
+	local _hookDetected = false
+	pcall(function()
+		local _testSrc = 'return 1'
+		local _c1 = _realLoadstring(_testSrc)
+		local _c2 = loadstring(_testSrc)
+		if _c1 and _c2 then
+			if debug and debug.info then
+				local n1 = debug.info(_c1, 'n')
+				local n2 = debug.info(_c2, 'n')
+				if tostring(n1) ~= tostring(n2) then
+					_hookDetected = true
+				end
+			end
+		end
+	end)
+	if _hookDetected then
+		game:GetService('Players').LocalPlayer:Kick('[AEROV4] integrity check failed - what u trying to do???')
+		error('[AEROV4] loadstring hook detected - if this is false dm aero', 2)
+	end
 end
 local queue_on_teleport = queue_on_teleport or function() end
 local isfile = isfile or function(file)
@@ -182,7 +204,7 @@ if not isfolder('newvape/assets/' .. gui) then
 end
 
 local guiSource = downloadFile('newvape/guis/' .. gui .. '.lua')
-local guiFunc, guiErr = loadstring(guiSource, 'gui')
+local guiFunc, guiErr = _realLoadstring(guiSource, 'gui')
 if not guiFunc then
 	local errMsg = tostring(guiErr)
 	local lineNum = errMsg:match(':(%d+):')
@@ -217,29 +239,9 @@ task.wait(0.1)
 
 do
 	local _req = (syn and syn.request) or (http_request and function(t) return http_request(t) end) or request or function() return {Body='{"tier":0}'} end
-	local _CONFIG_URL = 'https://gist.githubusercontent.com/wrj80z/d677c88c30f7ed231edec4e7ca3ec214/raw/4d49a0c817bdc427b277ebb092f943730a9aa802/gistfile1.txt'
-
-	local _liveUrl = (isfile('newvape/profiles/local_server.txt') and readfile('newvape/profiles/local_server.txt'):match('^%s*(.-)%s*$')) or nil
-	local _urlFailedUntil = 0
+	local _liveUrl = 'https://collecting-limited-terrorism-situation.trycloudflare.com/whitelist'
 	local function _getUrl()
-		if tick() < _urlFailedUntil then return nil end
-		local ok, dres = pcall(function()
-			return _req({
-				Url = _CONFIG_URL,
-				Method = 'GET',
-				Headers = { ['Cache-Control'] = 'no-cache' }
-			})
-		end)
-		if ok and dres and dres.Body and dres.StatusCode == 200 then
-			local url = dres.Body:match('^%s*(.-)%s*$')
-			if url ~= '' then
-				_liveUrl = url
-				writefile('newvape/profiles/local_server.txt', _liveUrl)
-				return _liveUrl
-			end
-		end
-		_urlFailedUntil = tick() + 10
-		return nil
+		return _liveUrl
 	end
 	local function _ft(uid)
 	    local url = _getUrl()
@@ -274,15 +276,15 @@ do
 	        return httpService:JSONDecode(res.Body)
 	    end)
 	
-	    if not dok or not data then
-	        return 0
-	    end
-	
-	    return tonumber(data.tier) or 0
+		if not dok or not data then
+			return 0
+		end
+
+		local t = tonumber(data.tier) or 0
+		return t
 	end
 
 	local _tierCache = {}
-	getgenv()._tierCache = _tierCache
 	local _fetchQueue = {}
 	local _queueRunning = false
 
@@ -529,7 +531,7 @@ do
             task.wait(0.3)
         end
 
-        myTier = getgenv().getAeroTier and getgenv().getAeroTier(lplr) or 1
+        myTier = getgenv().getAeroTier and getgenv().getAeroTier(lplr) or 0
         reportInjection(true)
         lastReport = tick()
     end)
@@ -586,24 +588,13 @@ do
                     if playerInServer then
                         local utier = u.tier or 0
                         local shouldShow = false
-                        if localTier == 99 and utier <= 4 then
-                            shouldShow = true
-                        elseif localTier == 4 and utier <= 3 then
-                            shouldShow = true
-                        end
 
 						if localTier == 99 then
-							shouldShow = utier <= 4 
+							shouldShow = utier <= 4
 						elseif localTier == 4 then
 							shouldShow = utier <= 3
-						elseif localTier == 3 then
-							shouldShow = utier <= 2
-						elseif localTier == 2 then
-							shouldShow = utier <= 1
-						elseif localTier == 1 then
-							shouldShow = utier == 0
 						else
-							shouldShow = true 
+							shouldShow = false
 						end
 
                         if shouldShow then
@@ -654,17 +645,17 @@ if getgenv().Closet then
 end
 
 if not shared.VapeIndependent then
-	loadstring(downloadFile('newvape/games/universal.lua'), 'universal')()
+	_realLoadstring(downloadFile('newvape/games/universal.lua'), 'universal')()
 	local gameFileId = (game.GameId == 2619619496) and (game.PlaceId == 6872265039 and 6872265039 or 6872274481) or game.PlaceId
 	if isfile('newvape/games/' .. gameFileId .. '.lua') then
-		loadstring(downloadFile('newvape/games/' .. gameFileId .. '.lua'), tostring(gameFileId))(...)
+		_realLoadstring(downloadFile('newvape/games/' .. gameFileId .. '.lua'), tostring(gameFileId))(...)
 	else
 		if not shared.VapeDeveloper then
 			local suc, res = pcall(function()
 				return game:HttpGet('https://raw.githubusercontent.com/poopparty/poopparty/' .. readfile('newvape/profiles/commit.txt') .. '/games/' .. gameFileId .. '.lua', true)
 			end)
 			if suc and res ~= '404: Not Found' then
-				loadstring(downloadFile('newvape/games/' .. gameFileId .. '.lua'), tostring(gameFileId))(...)
+				_realLoadstring(downloadFile('newvape/games/' .. gameFileId .. '.lua'), tostring(gameFileId))(...)
 			end
 		end
 	end
