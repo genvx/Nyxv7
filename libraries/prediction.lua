@@ -184,10 +184,31 @@ end
 
 function module.SolveTrajectory(origin, projectileSpeed, gravity, targetPos, targetVelocity, playerGravity, playerHeight, playerJump, params)
 	local disp = targetPos - origin
-	local effectiveVelocity = playerJump and Vector3.new(targetVelocity.X, targetVelocity.Y + playerJump, targetVelocity.Z) or targetVelocity
-	local p, q, r = effectiveVelocity.X, effectiveVelocity.Y, effectiveVelocity.Z
+	local p, q, r = targetVelocity.X, targetVelocity.Y, targetVelocity.Z
 	local h, j, k = disp.X, disp.Y, disp.Z
-	local l = -.5 * (gravity - (playerGravity or 0))
+	local l = -.5 * gravity
+
+	if math.abs(q) > 0.01 and playerGravity and playerGravity > 0 then
+		local estTime = (disp.Magnitude / projectileSpeed)
+		local origq = q
+		for i = 1, 100 do
+			q = origq - (.5 * playerGravity) * estTime
+			local velo = targetVelocity * 0.016
+			local ray = workspace:Raycast(Vector3.new(targetPos.X, targetPos.Y, targetPos.Z), 
+				Vector3.new(velo.X, (q * estTime) - playerHeight, velo.Z), params)
+			
+			if ray then
+				local newTarget = ray.Position + Vector3.new(0, playerHeight, 0)
+				estTime = estTime - math.sqrt(((targetPos - newTarget).Magnitude * 2) / playerGravity)
+				targetPos = newTarget
+				j = (targetPos - origin).Y
+				q = 0
+				break
+			else
+				break
+			end
+		end
+	end
 
 	local solutions = module.solveQuartic(
 		l*l,
@@ -197,15 +218,6 @@ function module.SolveTrajectory(origin, projectileSpeed, gravity, targetPos, tar
 		j*j + h*h + k*k
 	)
 	
-	local function linearFallback()
-		local t = disp.Magnitude / projectileSpeed
-		if t <= 0 then return targetPos end
-		local d = (h + p*t)/t
-		local e = (j + q*t)/t + 0.5 * gravity * t
-		local f = (k + r*t)/t
-		return origin + Vector3.new(d, e, f)
-	end
-
 	if solutions then
 		local posRoots = {}
 		for _, v in solutions do
@@ -214,21 +226,24 @@ function module.SolveTrajectory(origin, projectileSpeed, gravity, targetPos, tar
 			end
 		end
 		table.sort(posRoots)
+		posRoots[1] = posRoots[1]
 
-		local bestResult = nil
-		if #posRoots > 0 then
+		if posRoots[1] then
 			local t = posRoots[1]
 			local d = (h + p*t)/t
 			local e = (j + q*t - l*t*t)/t
 			local f = (k + r*t)/t
-			bestResult = origin + Vector3.new(d, e, f)
+			return origin + Vector3.new(d, e, f)
 		end
-		if bestResult then
-			return bestResult
-		end
+	elseif gravity == 0 then
+		local t = (disp.Magnitude / projectileSpeed)
+		local d = (h + p*t)/t
+		local e = (j + q*t - l*t*t)/t
+		local f = (k + r*t)/t
+		return origin + Vector3.new(d, e, f)
 	end
-
-	return linearFallback()
+	
+	return targetPos
 end
 
 return module
